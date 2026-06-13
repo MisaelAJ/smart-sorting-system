@@ -1,122 +1,106 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useEffect, useState } from "react";
+import { io } from "socket.io-client";
+
+// Conectar al backend expuesto por Docker
+const socket = io("http://localhost:3000");
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [lastPiece, setLastPiece] = useState(null);
+  const [connected, setConnected] = useState(false);
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    // Listen to connection status
+    socket.on("connect", () => setConnected(true));
+    socket.on("disconnect", () => setConnected(false));
+
+    // Listen to the event we configured in Node.js
+    socket.on("nueva_clasificacion", (data) => {
+      setLastPiece(data);
+      // Add to the beginning of the history keeping only the last 5
+      setHistory((prev) => [data, ...prev].slice(0, 5));
+    });
+
+    // Clean up subscriptions on unmount
+    return () => {
+      socket.off("connect");
+      socket.off("disconnect");
+      socket.off("nueva_clasificacion");
+    };
+  }, []);
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+    <div style={{ padding: "2rem", fontFamily: "system-ui, sans-serif" }}>
+      <h1>Smart Sorting System 🤖</h1>
+
+      <div
+        style={{
+          display: "inline-block",
+          padding: "0.5rem 1rem",
+          borderRadius: "50px",
+          backgroundColor: connected ? "#d4edda" : "#f8d7da",
+          color: connected ? "#155724" : "#721c24",
+          marginBottom: "2rem",
+        }}
+      >
+        Backend Status: {connected ? "🟢 Online" : "🔴 Offline"}
+      </div>
+
+      <div style={{ display: "flex", gap: "2rem" }}>
+        {/* Last Piece Panel */}
+        <div
+          style={{
+            flex: 1,
+            padding: "2rem",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+          }}
         >
-          Count is {count}
-        </button>
-      </section>
+          <h2>Last Piece Detected</h2>
+          {lastPiece ? (
+            <div>
+              <p>
+                <strong>Color:</strong>{" "}
+                <span style={{ textTransform: "capitalize" }}>
+                  {lastPiece.color}
+                </span>
+              </p>
+              <p>
+                <strong>Forma:</strong>{" "}
+                <span style={{ textTransform: "capitalize" }}>
+                  {lastPiece.forma}
+                </span>
+              </p>
+              <p>
+                <strong>Time:</strong> {lastPiece.timestamp}
+              </p>
+            </div>
+          ) : (
+            <p>Waiting for camera detections...</p>
+          )}
+        </div>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
+        {/* History Panel */}
+        <div
+          style={{
+            flex: 1,
+            padding: "2rem",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+          }}
+        >
+          <h2>Recent History</h2>
           <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
+            {history.map((item, index) => (
+              <li key={index} style={{ marginBottom: "0.5rem" }}>
+                {item.timestamp} - {item.forma} {item.color}
+              </li>
+            ))}
           </ul>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      </div>
+    </div>
+  );
 }
 
-export default App
+export default App;
