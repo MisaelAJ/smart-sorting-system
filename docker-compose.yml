@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # 1. Vision System (Python & OpenCV)
+  # ============================================
+  vision_engine:
+    build:
+      context: ./vision
+    container_name: sorting_vision
+    restart: unless-stopped
+    # Map camera device to container
+    #devices:
+    #  - /dev/video0:/dev/video0
+    volumes:
+    # Mount the vision code into the container for live editing
+      - ./vision:/app
+    ports:
+      # Make camera output available for streaming the video feed
+      - "5000:5000"
+    networks:
+      - sorting_net
+
+  # ============================================
+  # 2. Backend and Web Sockets (Node.js)
+  # ============================================
+  backend_server:
+    build:
+      context: ./backend
+    container_name: sorting_backend
+    restart: unless-stopped
+    # Here map the arduino port to the container
+    volumes:
+      - ./backend:/usr/src/app
+      - /usr/src/app/node_modules
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+    networks:
+      - sorting_net
+
+  # ============================================
+  # 3. User Interface (Web App - React)
+  # ============================================
+  front_ui:
+    build:
+      context: ./frontend
+    container_name: sorting_frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend_server
+    environment:
+      - NODE_ENV=development
+      #- VITE_API_URL=http://localhost:3000/api
+      #- VITE_WS_URL=http://localhost:3001
+    networks:
+      - sorting_net
+
+# ============================================
+# 4. Internal network for the services to communicate with each other
+# By hostname example: http://backend_server:3000
+# ============================================
+networks:
+  sorting_net:
+    driver: bridge
